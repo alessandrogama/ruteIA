@@ -518,7 +518,10 @@ app.get(['/', '/health'], (req, res) => {
 // ==========================================
 const verifyCronAuth = (req, res, next) => {
   const secretHeader = req.headers['x-cron-secret'];
-  if (!secretHeader || secretHeader !== CRON_SECRET) {
+  const secretQuery = req.query['x-cron-secret'] || req.query['secret'] || req.query['cron_secret'];
+  const providedSecret = secretHeader || secretQuery;
+
+  if (!providedSecret || providedSecret !== CRON_SECRET) {
     console.warn('[Security] Unauthorized cron attempt with invalid or missing x-cron-secret');
     return res.status(401).json({ ok: false, message: 'Unauthorized' });
   }
@@ -526,7 +529,7 @@ const verifyCronAuth = (req, res, next) => {
 };
 
 // 7.1 Morning / Midday Focus Check-in
-app.post('/api/cron/focus', verifyCronAuth, async (req, res) => {
+const handleFocusCron = async (req, res) => {
   try {
     const state = await getRecoveryState();
     const text = `☀️ **Rute Focus Check-in**
@@ -544,10 +547,12 @@ Good morning! Time to take ownership of your day.
     console.error('[Cron /api/cron/focus Error]:', error);
     return res.status(500).json({ ok: false, error: 'Failed to dispatch message' });
   }
-});
+};
+app.post('/api/cron/focus', verifyCronAuth, handleFocusCron);
+app.get('/api/cron/focus', verifyCronAuth, handleFocusCron);
 
 // 7.2 Evening Wind-Down Notification
-app.post('/api/cron/wind-down', verifyCronAuth, async (req, res) => {
+const handleWindDownCron = async (req, res) => {
   try {
     const text = `🕯️ **Rute Wind-Down Reminder**
 
@@ -564,11 +569,13 @@ Breathe deeply. Quality sleep is where neural pathways solidify. Rest well!`;
     console.error('[Cron /api/cron/wind-down Error]:', error);
     return res.status(500).json({ ok: false, error: 'Failed to dispatch message' });
   }
-});
+};
+app.post('/api/cron/wind-down', verifyCronAuth, handleWindDownCron);
+app.get('/api/cron/wind-down', verifyCronAuth, handleWindDownCron);
 
 // 7.3 Nightly Check-in & Recovery Evaluator
 // Branches properly when resetDayToday is true: sends encouragement instead of clean check-in
-app.post('/api/cron/night', verifyCronAuth, async (req, res) => {
+const handleNightCron = async (req, res) => {
   try {
     const evaluation = await handleNightlyCronEvaluation();
 
@@ -602,7 +609,9 @@ Every clean day rewires your dopamine pathways and builds self-trust. Rest deepl
     console.error('[Cron /api/cron/night Error]:', error);
     return res.status(500).json({ ok: false, error: 'Failed to dispatch message' });
   }
-});
+};
+app.post('/api/cron/night', verifyCronAuth, handleNightCron);
+app.get('/api/cron/night', verifyCronAuth, handleNightCron);
 
 // Fallback error handler for Express
 app.use((err, req, res, next) => {
@@ -617,4 +626,10 @@ app.listen(PORT, () => {
   console.log(`🚀 Rute Bot server listening on port ${PORT}`);
   console.log(`🔗 Webhook endpoint: /telegram-webhook`);
   console.log(`🛡️ Authorized Telegram User ID: ${ALLOWED_USER_ID}`);
+  console.log('Rotas registadas:');
+  app._router.stack.forEach((r) => {
+    if (r.route && r.route.path) {
+      console.log(`${Object.keys(r.route.methods).join(',').toUpperCase()} ${r.route.path}`);
+    }
+  });
 });
