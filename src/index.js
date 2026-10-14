@@ -520,7 +520,7 @@ const verifyCronAuth = (req, res, next) => {
   const secretHeader = req.headers['x-cron-secret'];
   if (!secretHeader || secretHeader !== CRON_SECRET) {
     console.warn('[Security] Unauthorized cron attempt with invalid or missing x-cron-secret');
-    return res.status(401).json({ error: 'Unauthorized: Invalid or missing x-cron-secret header' });
+    return res.status(401).json({ ok: false, message: 'Unauthorized' });
   }
   next();
 };
@@ -539,10 +539,10 @@ Good morning! Time to take ownership of your day.
 *English Challenge:* Reply to me in English with: *"Today, my main priority is..."* and tell me what you'll achieve!`;
 
     await sendSafeMessage(ALLOWED_USER_ID, text);
-    res.json({ success: true, message: 'Focus cron notification sent successfully' });
+    return res.status(200).json({ ok: true });
   } catch (error) {
     console.error('[Cron /api/cron/focus Error]:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ ok: false, error: 'Failed to dispatch message' });
   }
 });
 
@@ -559,10 +559,10 @@ The day is winding down. Give your nervous system permission to decelerate.
 Breathe deeply. Quality sleep is where neural pathways solidify. Rest well!`;
 
     await sendSafeMessage(ALLOWED_USER_ID, text);
-    res.json({ success: true, message: 'Wind-down cron notification sent successfully' });
+    return res.status(200).json({ ok: true });
   } catch (error) {
     console.error('[Cron /api/cron/wind-down Error]:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ ok: false, error: 'Failed to dispatch message' });
   }
 });
 
@@ -584,11 +584,7 @@ Today was a reset day, but you survived it and held the line tonight.
 Forgive yourself, let go of today's friction, and get restorative rest. Tomorrow we wake up and execute. I am right by your side.`;
 
       await sendSafeMessage(ALLOWED_USER_ID, text);
-      return res.json({
-        success: true,
-        branch: 'reset_day_encouragement',
-        message: 'Nightly encouragement sent for reset day'
-      });
+      return res.status(200).json({ ok: true });
     }
 
     // Branch: Clean day completed! Increment streak and celebrate.
@@ -601,15 +597,10 @@ Another day of discipline and victory in the books!
 Every clean day rewires your dopamine pathways and builds self-trust. Rest deeply tonight — you earned this progress!`;
 
     await sendSafeMessage(ALLOWED_USER_ID, text);
-    res.json({
-      success: true,
-      branch: 'clean_day_completed',
-      streakDays: evaluation.streakDays,
-      bestStreakDays: evaluation.bestStreakDays
-    });
+    return res.status(200).json({ ok: true });
   } catch (error) {
     console.error('[Cron /api/cron/night Error]:', error);
-    res.status(500).json({ success: false, error: error.message });
+    return res.status(500).json({ ok: false, error: 'Failed to dispatch message' });
   }
 });
 
