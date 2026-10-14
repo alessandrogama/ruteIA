@@ -1,11 +1,11 @@
-# Rute Telegram Bot 🌟
+# Rute Telegram Bot 
 ### 24/7 Personal Telegram Assistant, Habit Coach & English Tutor
 
 Rute is a lightweight, stateless Telegram assistant powered by **Node.js (ES Modules)**, **grammY**, **Google Gemini 2.5 Flash (`@google/genai`)**, and **Upstash Redis**. Designed for zero-cost deployment on platforms like Render.com or Koyeb.
 
 ---
 
-## 🏗️ Architecture & Core Principles
+##  Architecture & Core Principles
 
 - **Stateless & Serverless Persistence**: All persistent user state (streaks, timestamps, reset flags, and history) is saved in **Upstash Redis** under the key `recovery_tracker`. No local files (`.json`, `.sqlite`, or temporary audio files) are written to disk.
 - **Pure In-Memory Audio Handling**: Telegram `.oga`/`.ogg` voice notes are streamed directly into an in-memory buffer, encoded to Base64, and sent to Gemini 2.5 Flash via `inlineData`.
@@ -18,7 +18,7 @@ Rute is a lightweight, stateless Telegram assistant powered by **Node.js (ES Mod
 
 ---
 
-## 📋 Table of Contents
+##  Table of Contents
 1. [Prerequisites & Key Generation](#1-prerequisites--key-generation)
 2. [Local Setup & Installation](#2-local-setup--installation)
 3. [Upstash Redis Database Setup](#3-upstash-redis-database-setup)
