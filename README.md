@@ -140,10 +140,19 @@ Render offers a reliable zero-cost web service tier:
 
 To connect Telegram to your newly deployed bot:
 
-Replace `<TELEGRAM_BOT_TOKEN>` and `<YOUR_RENDER_URL>` in the following URL and paste it into your browser or run it with `curl`:
+> [!IMPORTANT]
+> By default, Telegram webhooks only deliver standard message updates. To enable Telegram to forward native reaction events (`message_reaction`), you **must** specify the `allowed_updates` query parameter when registering your webhook URL.
 
+Replace `<TELEGRAM_BOT_TOKEN>` and `<YOUR_RENDER_URL>` in the following command or paste the browser URL:
+
+#### Via cURL / Terminal:
 ```bash
-curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=https://<YOUR_RENDER_URL>/telegram-webhook"
+curl -X POST "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=https://<YOUR_RENDER_URL>/telegram-webhook&allowed_updates=[\"message\",\"message_reaction\"]"
+```
+
+#### Via Web Browser:
+```text
+https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/setWebhook?url=https://<YOUR_RENDER_URL>/telegram-webhook&allowed_updates=["message","message_reaction"]
 ```
 
 You should receive a JSON response:
@@ -155,7 +164,7 @@ You should receive a JSON response:
 }
 ```
 
-To verify your webhook status anytime:
+To verify your webhook status and enabled updates anytime:
 ```bash
 curl "https://api.telegram.org/bot<TELEGRAM_BOT_TOKEN>/getWebhookInfo"
 ```
@@ -202,8 +211,11 @@ Create an account at [cron-job.org](https://cron-job.org/) (free) and set up the
 | Action / Trigger | Example | Bot Response |
 | :--- | :--- | :--- |
 | **Start / Help** | `/start` or `/help` | Welcomes user, introduces Rute, shows current streak and guide. |
+| **Native Reactions** | React with `❤️`, `💖`, `🥰`, `😍` | Rute reacts back with `['❤️', '🔥', '✨', '🙏', '🙌', '😊']` and sends an affectionate, encouraging text. |
+| **Emoji-Only Messages** | `❤️❤️`, `🥰`, `😍` | Rute reacts directly to the message (`ctx.react`) and halts processing early, saving Gemini tokens. |
 | **Report Relapse** | `relapse`, `recaída`, `/relapse` | Enforces single-reset-day cap. Resets streak to 0 (if first today) and guides through immediate emotional regulation. |
 | **Check Progress** | `progress`, `status`, `streak` | Displays current streak, best streak, today's status, and last recorded relapse timestamp. |
 | **Voice Message** | Native Telegram audio note | Downloads buffer into memory, feeds Base64 to Gemini 2.5 Flash, and replies with habit coaching + English tips. |
 | **English Practice** | Any text or voice in English | Rute responds naturally in English, plus provides the `📝 English Coaching:` section with grammar and phrasing corrections. |
 | **General Chat** | Any personal reflection or goal | Rute replies contextually with full awareness of your current habit streak. |
+

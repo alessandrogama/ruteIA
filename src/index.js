@@ -227,14 +227,67 @@ async function replySafe(ctx, text, extra = {}) {
 // 5. Telegram Bot Middleware & Handlers
 // ==========================================
 
+// Reaction constants
+const AFFECTION_EMOJIS = ['❤️', '💖', '🥰', '😍'];
+const REACTION_REPLY_EMOJIS = ['❤️', '🔥', '✨', '🙏', '🙌', '😊'];
+const AFFECTION_TEXT_RESPONSES = [
+  "Fico feliz pelo seu carinho! Seguimos firmes e focados hoje! 🙏✨",
+  "Tamo junto, Alessandro! Vamos manter a consistência! 💪",
+  "Valeu pela força! Um passo de cada vez. ❤️",
+  "Obrigada pelo carinho! Cada dia conta na nossa jornada. 🔥✨",
+  "Tamo junto! Foco total nos seus objetivos hoje! 🙌"
+];
+
 // Security Middleware: Strictly drop updates from unauthorized user IDs
 bot.use(async (ctx, next) => {
-  const fromId = ctx.from?.id?.toString();
+  const fromId = (ctx.from?.id || ctx.messageReaction?.user?.id)?.toString();
   if (!fromId || fromId !== ALLOWED_USER_ID) {
     console.warn(`[Security] Dropping update from unauthorized user ID: ${fromId || 'unknown'}`);
     return; // Drop silently
   }
   await next();
+});
+
+// Handler para Reações Nativas (message_reaction)
+bot.on('message_reaction', async (ctx) => {
+  try {
+    // Validação de segurança: garanta que apenas reações de ALLOWED_USER_ID sejam processadas
+    const fromId = (ctx.from?.id || ctx.messageReaction?.user?.id)?.toString();
+    if (!fromId || fromId !== ALLOWED_USER_ID) {
+      console.warn(`[Security] Dropping reaction from unauthorized user ID: ${fromId || 'unknown'}`);
+      return;
+    }
+
+    const mr = ctx.messageReaction;
+    if (!mr) return;
+
+    const chatId = mr.chat?.id;
+    const messageId = mr.message_id;
+    if (!chatId || !messageId) return;
+
+    // Verificar se a reação adicionada pelo usuário contém corações ou emojis de afeto
+    const addedEmojis = ctx.reactions().emojiAdded;
+    const newReactions = mr.new_reaction || [];
+    const hasAffectionReaction =
+      addedEmojis.some((e) => AFFECTION_EMOJIS.includes(e)) ||
+      newReactions.some((r) => r.type === 'emoji' && AFFECTION_EMOJIS.includes(r.emoji));
+
+    if (hasAffectionReaction) {
+      // 1. Adicionar reação nativa de volta na mensagem
+      const randomReaction = REACTION_REPLY_EMOJIS[Math.floor(Math.random() * REACTION_REPLY_EMOJIS.length)];
+      try {
+        await ctx.api.setMessageReaction(chatId, messageId, [{ type: 'emoji', emoji: randomReaction }]);
+      } catch (reactErr) {
+        console.warn(`[Reaction] Could not set message reaction: ${reactErr.message}`);
+      }
+
+      // 2. Enviar mensagem curta de texto escolhida aleatoriamente
+      const randomMessage = AFFECTION_TEXT_RESPONSES[Math.floor(Math.random() * AFFECTION_TEXT_RESPONSES.length)];
+      await sendSafeMessage(chatId, randomMessage);
+    }
+  } catch (error) {
+    console.error('[Handler message_reaction Error]:', error);
+  }
 });
 
 // Command: /start or /help
@@ -383,12 +436,35 @@ If they spoke in English, respond in English and include the "📝 English Coach
 });
 
 // General Text Message Handler (Coaching, English tutor, and Assistant)
-bot.on(':text', async (ctx) => {
+bot.on('message:text', async (ctx) => {
   try {
+    const userMessage = ctx.message.text;
+
+    // Tratamento de Mensagens Contendo Apenas Emojis
+    const cleanedMessage = userMessage.trim().replace(/[\uFE0F\uFE0E]/g, '');
+    const isOnlyEmojis =
+      /^[\p{Extended_Pictographic}\s]+$/u.test(cleanedMessage) ||
+      /^[\p{Extended_Pictographic}\s]+$/u.test(userMessage.trim());
+
+    if (isOnlyEmojis) {
+      const hasAffectionEmoji = AFFECTION_EMOJIS.some((e) => userMessage.includes(e));
+
+      if (hasAffectionEmoji) {
+        // Reagir diretamente na mensagem do usuário com emoji aleatório
+        const randomEmoji = REACTION_REPLY_EMOJIS[Math.floor(Math.random() * REACTION_REPLY_EMOJIS.length)];
+        try {
+          await ctx.react(randomEmoji);
+        } catch (reactErr) {
+          console.warn(`[Reaction] Could not react to message: ${reactErr.message}`);
+        }
+        // Encerra o processamento antes de chamar a API do Gemini para poupar tokens
+        return;
+      }
+    }
+
     await ctx.replyWithChatAction('typing');
 
     const state = await getRecoveryState();
-    const userMessage = ctx.message.text;
 
     const genaiResponse = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
