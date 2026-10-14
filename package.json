@@ -1,0 +1,27 @@
+{
+  "name": "rute-telegram-bot",
+  "version": "1.0.0",
+  "description": "24/7 personal Telegram assistant, habit coach, and English tutor",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "@google/genai": "^2.29.1",
+    "@upstash/redis": "^1.34.3",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "grammy": "^1.34.0"
+  },
+  "keywords": [
+    "telegram-bot",
+    "grammy",
+    "gemini",
+    "habit-coach",
+    "upstash-redis"
+  ],
+  "author": "",
+  "license": "ISC"
+}
