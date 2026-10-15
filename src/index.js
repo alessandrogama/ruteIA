@@ -51,6 +51,7 @@ const redis = new Redis({
   url: process.env.UPSTASH_REDIS_REST_URL,
   token: process.env.UPSTASH_REDIS_REST_TOKEN
 });
+const GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
 // ==========================================
 // 3. Upstash Redis State Manager
@@ -406,9 +407,9 @@ bot.on(':voice', async (ctx) => {
     // 3. Retrieve current state context for Rute
     const state = await getRecoveryState();
 
-    // 4. Pass directly to @google/genai (gemini-2.5-flash) via inlineData
+    // 4. Pass directly to @google/genai via inlineData
     const genaiResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: GEMINI_MODEL,
       contents: [
         {
           inlineData: {
@@ -467,7 +468,7 @@ bot.on('message:text', async (ctx) => {
     const state = await getRecoveryState();
 
     const genaiResponse = await ai.models.generateContent({
-      model: 'gemini-2.5-flash',
+      model: GEMINI_MODEL,
       contents: [
         {
           text: `[Context: User recovery streak: ${state.streakDays} days (Best: ${state.bestStreakDays}). Today resetDayToday=${state.resetDayToday}.]
@@ -508,7 +509,7 @@ app.get(['/', '/health'], (req, res) => {
   res.json({
     status: 'ok',
     service: 'Rute Telegram Assistant & Coach',
-    model: 'gemini-2.5-flash',
+    model: GEMINI_MODEL,
     uptime: process.uptime()
   });
 });
