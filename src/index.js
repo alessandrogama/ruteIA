@@ -518,18 +518,20 @@ app.get(['/', '/health'], (req, res) => {
 // ==========================================
 const verifyCronAuth = (req, res, next) => {
   const secretHeader = req.headers['x-cron-secret'];
-  const secretQuery = req.query['x-cron-secret'] || req.query['secret'] || req.query['cron_secret'];
-  const providedSecret = secretHeader || secretQuery;
+  const secretQuery = req.query?.['x-cron-secret'] || req.query?.secret || req.query?.cron_secret;
+  const rawSecret = secretHeader || secretQuery;
+  const providedSecret = typeof rawSecret === 'string' ? rawSecret.trim() : '';
 
   if (!providedSecret || providedSecret !== CRON_SECRET) {
-    console.warn('[Security] Unauthorized cron attempt with invalid or missing x-cron-secret');
-    return res.status(401).json({ ok: false, message: 'Unauthorized' });
+    console.warn(`[Security] Unauthorized cron attempt with invalid or missing x-cron-secret from IP: ${req.ip}`);
+    return res.status(401).json({ ok: false });
   }
   next();
 };
 
 // 7.1 Morning / Midday Focus Check-in
 const handleFocusCron = async (req, res) => {
+  console.log(`[Cron Trigger] /api/cron/focus disparado (${req.method}) em ${new Date().toISOString()}`);
   try {
     const state = await getRecoveryState();
     const text = `☀️ **Rute Focus Check-in**
@@ -542,6 +544,7 @@ Good morning! Time to take ownership of your day.
 *English Challenge:* Reply to me in English with: *"Today, my main priority is..."* and tell me what you'll achieve!`;
 
     await sendSafeMessage(ALLOWED_USER_ID, text);
+    console.log('[Cron Success] /api/cron/focus mensagem despachada com sucesso');
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error('[Cron /api/cron/focus Error]:', error);
@@ -553,6 +556,7 @@ app.get('/api/cron/focus', verifyCronAuth, handleFocusCron);
 
 // 7.2 Evening Wind-Down Notification
 const handleWindDownCron = async (req, res) => {
+  console.log(`[Cron Trigger] /api/cron/wind-down disparado (${req.method}) em ${new Date().toISOString()}`);
   try {
     const text = `🕯️ **Rute Wind-Down Reminder**
 
@@ -564,6 +568,7 @@ The day is winding down. Give your nervous system permission to decelerate.
 Breathe deeply. Quality sleep is where neural pathways solidify. Rest well!`;
 
     await sendSafeMessage(ALLOWED_USER_ID, text);
+    console.log('[Cron Success] /api/cron/wind-down mensagem despachada com sucesso');
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error('[Cron /api/cron/wind-down Error]:', error);
@@ -576,6 +581,7 @@ app.get('/api/cron/wind-down', verifyCronAuth, handleWindDownCron);
 // 7.3 Nightly Check-in & Recovery Evaluator
 // Branches properly when resetDayToday is true: sends encouragement instead of clean check-in
 const handleNightCron = async (req, res) => {
+  console.log(`[Cron Trigger] /api/cron/night disparado (${req.method}) em ${new Date().toISOString()}`);
   try {
     const evaluation = await handleNightlyCronEvaluation();
 
@@ -591,6 +597,7 @@ Today was a reset day, but you survived it and held the line tonight.
 Forgive yourself, let go of today's friction, and get restorative rest. Tomorrow we wake up and execute. I am right by your side.`;
 
       await sendSafeMessage(ALLOWED_USER_ID, text);
+      console.log('[Cron Success] /api/cron/night mensagem de incentivo (reset day) despachada');
       return res.status(200).json({ ok: true });
     }
 
@@ -604,6 +611,7 @@ Another day of discipline and victory in the books!
 Every clean day rewires your dopamine pathways and builds self-trust. Rest deeply tonight — you earned this progress!`;
 
     await sendSafeMessage(ALLOWED_USER_ID, text);
+    console.log('[Cron Success] /api/cron/night mensagem clean day despachada');
     return res.status(200).json({ ok: true });
   } catch (error) {
     console.error('[Cron /api/cron/night Error]:', error);
