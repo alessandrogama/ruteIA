@@ -525,7 +525,7 @@ const verifyCronAuth = (req, res, next) => {
 
   if (!providedSecret || providedSecret !== CRON_SECRET) {
     console.warn(`[Security] Unauthorized cron attempt with invalid or missing x-cron-secret from IP: ${req.ip}`);
-    return res.status(401).json({ ok: false });
+    return res.status(401).send('Unauthorized');
   }
   next();
 };
@@ -546,10 +546,10 @@ Good morning! Time to take ownership of your day.
 
     await sendSafeMessage(ALLOWED_USER_ID, text);
     console.log('[Cron Success] /api/cron/focus mensagem despachada com sucesso');
-    return res.status(200).json({ ok: true });
+    return res.sendStatus(204);
   } catch (error) {
     console.error('[Cron /api/cron/focus Error]:', error);
-    return res.status(500).json({ ok: false, error: 'Failed to dispatch message' });
+    return res.status(500).send('Error');
   }
 };
 app.post('/api/cron/focus', verifyCronAuth, handleFocusCron);
@@ -570,10 +570,10 @@ Breathe deeply. Quality sleep is where neural pathways solidify. Rest well!`;
 
     await sendSafeMessage(ALLOWED_USER_ID, text);
     console.log('[Cron Success] /api/cron/wind-down mensagem despachada com sucesso');
-    return res.status(200).json({ ok: true });
+    return res.sendStatus(204);
   } catch (error) {
     console.error('[Cron /api/cron/wind-down Error]:', error);
-    return res.status(500).json({ ok: false, error: 'Failed to dispatch message' });
+    return res.status(500).send('Error');
   }
 };
 app.post('/api/cron/wind-down', verifyCronAuth, handleWindDownCron);
@@ -599,7 +599,7 @@ Forgive yourself, let go of today's friction, and get restorative rest. Tomorrow
 
       await sendSafeMessage(ALLOWED_USER_ID, text);
       console.log('[Cron Success] /api/cron/night mensagem de incentivo (reset day) despachada');
-      return res.status(200).json({ ok: true });
+      return res.sendStatus(204);
     }
 
     // Branch: Clean day completed! Increment streak and celebrate.
@@ -613,10 +613,10 @@ Every clean day rewires your dopamine pathways and builds self-trust. Rest deepl
 
     await sendSafeMessage(ALLOWED_USER_ID, text);
     console.log('[Cron Success] /api/cron/night mensagem clean day despachada');
-    return res.status(200).json({ ok: true });
+    return res.sendStatus(204);
   } catch (error) {
     console.error('[Cron /api/cron/night Error]:', error);
-    return res.status(500).json({ ok: false, error: 'Failed to dispatch message' });
+    return res.status(500).send('Error');
   }
 };
 app.post('/api/cron/night', verifyCronAuth, handleNightCron);
