@@ -521,21 +521,26 @@ const verifyCronAuth = (req, res, next) => {
   const secretHeader = req.headers['x-cron-secret'];
   const secretQuery = req.query?.['x-cron-secret'] || req.query?.secret || req.query?.cron_secret;
   const rawSecret = secretHeader || secretQuery;
-  const providedSecret = typeof rawSecret === 'string' ? rawSecret.trim() : '';
+  const secret = typeof rawSecret === 'string' ? rawSecret.trim() : '';
 
-  if (!providedSecret || providedSecret !== CRON_SECRET) {
-    console.warn(`[Security] Unauthorized cron attempt with invalid or missing x-cron-secret from IP: ${req.ip}`);
-    return res.status(401).send('Unauthorized');
+  if (!secret || secret !== process.env.CRON_SECRET?.trim()) {
+    console.warn('[Cron Auth] Tentativa não autorizada');
+    return res.status(401).end();
   }
   next();
 };
 
 // 7.1 Morning / Midday Focus Check-in
-const handleFocusCron = async (req, res) => {
-  console.log(`[Cron Trigger] /api/cron/focus disparado (${req.method}) em ${new Date().toISOString()}`);
-  try {
-    const state = await getRecoveryState();
-    const text = `☀️ **Rute Focus Check-in**
+const handleFocusCron = (req, res) => {
+  console.log(`[Cron Focus Trigger] /api/cron/focus disparado (${req.method})`);
+  // 1. Responde imediatamente ao cron-job.org com 0 bytes
+  res.status(204).end();
+
+  // 2. Dispara a mensagem em segundo plano sem bloquear a resposta HTTP
+  (async () => {
+    try {
+      const state = await getRecoveryState();
+      const text = `☀️ **Rute Focus Check-in**
 
 Good morning! Time to take ownership of your day.
 • **Current Streak:** ${state.streakDays} days 🔥
@@ -544,22 +549,26 @@ Good morning! Time to take ownership of your day.
 
 *English Challenge:* Reply to me in English with: *"Today, my main priority is..."* and tell me what you'll achieve!`;
 
-    await sendSafeMessage(ALLOWED_USER_ID, text);
-    console.log('[Cron Success] /api/cron/focus mensagem despachada com sucesso');
-    return res.sendStatus(204);
-  } catch (error) {
-    console.error('[Cron /api/cron/focus Error]:', error);
-    return res.status(500).send('Error');
-  }
+      await sendSafeMessage(ALLOWED_USER_ID, text);
+      console.log('[Cron Focus] Mensagem enviada com sucesso no Telegram');
+    } catch (err) {
+      console.error('[Cron Focus Error] Falha ao enviar mensagem no Telegram:', err.message);
+    }
+  })();
 };
 app.post('/api/cron/focus', verifyCronAuth, handleFocusCron);
 app.get('/api/cron/focus', verifyCronAuth, handleFocusCron);
 
 // 7.2 Evening Wind-Down Notification
-const handleWindDownCron = async (req, res) => {
-  console.log(`[Cron Trigger] /api/cron/wind-down disparado (${req.method}) em ${new Date().toISOString()}`);
-  try {
-    const text = `🕯️ **Rute Wind-Down Reminder**
+const handleWindDownCron = (req, res) => {
+  console.log(`[Cron Wind-Down Trigger] /api/cron/wind-down disparado (${req.method})`);
+  // 1. Responde imediatamente ao cron-job.org com 0 bytes
+  res.status(204).end();
+
+  // 2. Dispara a mensagem em segundo plano sem bloquear a resposta HTTP
+  (async () => {
+    try {
+      const text = `🕯️ **Rute Wind-Down Reminder**
 
 The day is winding down. Give your nervous system permission to decelerate.
 1. **Digital Sunset:** Disconnect from stimulating content and bright screens.
@@ -568,28 +577,30 @@ The day is winding down. Give your nervous system permission to decelerate.
 
 Breathe deeply. Quality sleep is where neural pathways solidify. Rest well!`;
 
-    await sendSafeMessage(ALLOWED_USER_ID, text);
-    console.log('[Cron Success] /api/cron/wind-down mensagem despachada com sucesso');
-    return res.sendStatus(204);
-  } catch (error) {
-    console.error('[Cron /api/cron/wind-down Error]:', error);
-    return res.status(500).send('Error');
-  }
+      await sendSafeMessage(ALLOWED_USER_ID, text);
+      console.log('[Cron Wind-Down] Mensagem enviada com sucesso no Telegram');
+    } catch (err) {
+      console.error('[Cron Wind-Down Error] Falha ao enviar mensagem no Telegram:', err.message);
+    }
+  })();
 };
 app.post('/api/cron/wind-down', verifyCronAuth, handleWindDownCron);
 app.get('/api/cron/wind-down', verifyCronAuth, handleWindDownCron);
 
 // 7.3 Nightly Check-in & Recovery Evaluator
 // Branches properly when resetDayToday is true: sends encouragement instead of clean check-in
-const handleNightCron = async (req, res) => {
-  console.log(`[Cron Trigger] /api/cron/night disparado (${req.method}) em ${new Date().toISOString()}`);
-  try {
-    const evaluation = await handleNightlyCronEvaluation();
+const handleNightCron = (req, res) => {
+  console.log(`[Cron Night Trigger] /api/cron/night disparado (${req.method})`);
+  // 1. Responde imediatamente ao cron-job.org com 0 bytes
+  res.status(204).end();
 
-    if (evaluation.wasResetDay) {
-      // Branch: User had a reset earlier today.
-      // Send encouragement instead of clean check-in, clearing flag for tomorrow.
-      const text = `🌙 **Rute Nightly Check-in: Compassion & Reset**
+  // 2. Dispara a mensagem e avaliação em segundo plano sem bloquear a resposta HTTP
+  (async () => {
+    try {
+      const evaluation = await handleNightlyCronEvaluation();
+
+      if (evaluation.wasResetDay) {
+        const text = `🌙 **Rute Nightly Check-in: Compassion & Reset**
 
 Today was a reset day, but you survived it and held the line tonight.
 • The single-reset-day cap protected your focus from spiraling.
@@ -597,13 +608,12 @@ Today was a reset day, but you survived it and held the line tonight.
 
 Forgive yourself, let go of today's friction, and get restorative rest. Tomorrow we wake up and execute. I am right by your side.`;
 
-      await sendSafeMessage(ALLOWED_USER_ID, text);
-      console.log('[Cron Success] /api/cron/night mensagem de incentivo (reset day) despachada');
-      return res.sendStatus(204);
-    }
+        await sendSafeMessage(ALLOWED_USER_ID, text);
+        console.log('[Cron Night] Mensagem de incentivo (reset day) enviada no Telegram');
+        return;
+      }
 
-    // Branch: Clean day completed! Increment streak and celebrate.
-    const text = `🌙 **Rute Nightly Check-in: Clean Day Completed!** 🔥
+      const text = `🌙 **Rute Nightly Check-in: Clean Day Completed!** 🔥
 
 Another day of discipline and victory in the books!
 • **Current Streak:** ${evaluation.streakDays} ${evaluation.streakDays === 1 ? 'day' : 'days'}
@@ -611,21 +621,20 @@ Another day of discipline and victory in the books!
 
 Every clean day rewires your dopamine pathways and builds self-trust. Rest deeply tonight — you earned this progress!`;
 
-    await sendSafeMessage(ALLOWED_USER_ID, text);
-    console.log('[Cron Success] /api/cron/night mensagem clean day despachada');
-    return res.sendStatus(204);
-  } catch (error) {
-    console.error('[Cron /api/cron/night Error]:', error);
-    return res.status(500).send('Error');
-  }
+      await sendSafeMessage(ALLOWED_USER_ID, text);
+      console.log('[Cron Night] Mensagem clean day enviada no Telegram');
+    } catch (err) {
+      console.error('[Cron Night Error] Falha ao processar cron noturno no Telegram:', err.message);
+    }
+  })();
 };
 app.post('/api/cron/night', verifyCronAuth, handleNightCron);
 app.get('/api/cron/night', verifyCronAuth, handleNightCron);
 
-// Fallback error handler for Express
+// Global error handler for Express
 app.use((err, req, res, next) => {
-  console.error('[Express Internal Error]:', err);
-  res.status(500).json({ error: 'Internal server error' });
+  console.error('[Global Express Error]:', err);
+  res.status(500).end();
 });
 
 // ==========================================
